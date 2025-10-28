@@ -1,4 +1,4 @@
-# Reproducibility Repository for the paper "Reconstruction of Moment Equations for Strongly Non-Equilibrium Flows via Machine Learning"
+# Reproducibility Repository for the paper "Extraction of Moment Closures for Strongly Non-Equilibrium Flows via Machine Learning"
 
 # Overview
 Welcome to the reproducibility repository for the paper "Reconstruction of Moment Equations for Strongly Non-Equilibrium Flows via Machine Learning" by Hang Song, Satyvir Singh, Manuel Torrilhon and Semih Cayci. This repository contains the necessary files to reproduce the results of shock at Ma=9 presented in the paper.
