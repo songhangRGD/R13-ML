@@ -1,0 +1,14 @@
+name = "TrixiMomentEquations"
+uuid = "497887ea-6954-40df-83d2-5e7ae1e70c3c"
+authors = ["Hang Song <hang.song@rwth-aachen.de>"]
+version = "0.1.0"
+
+[deps]
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Trixi = "a7f1ee26-1774-49b1-8366-f1abc58fbfcb"
