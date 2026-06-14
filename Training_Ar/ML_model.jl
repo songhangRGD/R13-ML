@@ -4,7 +4,7 @@ using Statistics
 using Random
 using CUDA
 
-# ================== 保持不变的部分 ================== #
+# ================== Unchanged utility functions ================== #
 function moving_average_filter(data::AbstractMatrix{Float32}, window_size::Int)
     filtered_data = similar(data)
     rows, cols = size(data)
@@ -20,35 +20,35 @@ function moving_average_filter(data::AbstractMatrix{Float32}, window_size::Int)
 end
 
 function load_data(base_path::String; window_size=7)
-    # 存储每个文件处理后的数据
+    # Store the processed data from each file
     filtered_inputs_moments = []
     filtered_outputs_moments = []
     filtered_inputs_source = []
     filtered_outputs_source = []
 
-    # 获取排序后的目录列表
+    # Get the sorted directory list
     dirpaths = sort!(readdir(base_path, join=true))
     
     for dirpath in dirpaths
         isdir(dirpath) || continue
         
-        # 获取排序后的文件列表
+        # Get the sorted file list
         file_paths = sort!(readdir(dirpath, join=true))
         
         for file_path in file_paths
             if endswith(file_path, "_input.dat")
-                # 读取单个文件的数据
+                # Read data from a single file
                 file_inputs_moments = Float32[]
                 file_outputs_moments = Float32[]
                 file_inputs_source = Float32[]
                 file_outputs_source = Float32[]
                 
                 open(file_path, "r") do file
-                    readline(file); readline(file)  # 跳过前两行
+                    readline(file); readline(file)  # Skip the first two header lines
                     for line in eachline(file)
                         values = parse.(Float32, split(line))
                         if length(values) == 14
-                            # 追加当前文件的数据
+                            # Append the data from the current file
                             append!(file_inputs_moments, values[2:10])
                             append!(file_outputs_moments, values[11:12])
                             append!(file_inputs_source, values[2:5])
@@ -57,16 +57,16 @@ function load_data(base_path::String; window_size=7)
                     end
                 end
                 
-                # 对单个文件数据独立滤波
+                # Apply filtering independently to each file
                 n_points = length(file_inputs_moments) ÷ 9
                 if n_points > 0
-                    # 重塑为矩阵并滤波
+                    # Reshape the data into matrices and apply filtering
                     input_moments = moving_average_filter(reshape(file_inputs_moments, 9, n_points), window_size)
                     output_moments = moving_average_filter(reshape(file_outputs_moments, 2, n_points), window_size)
                     input_source = moving_average_filter(reshape(file_inputs_source, 4, n_points), window_size)
                     output_source = moving_average_filter(reshape(file_outputs_source, 2, n_points), window_size)
                     
-                    # 收集滤波后的数据
+                    # Collect the filtered data
                     push!(filtered_inputs_moments, input_moments)
                     push!(filtered_outputs_moments, output_moments)
                     push!(filtered_inputs_source, input_source)
@@ -76,7 +76,7 @@ function load_data(base_path::String; window_size=7)
         end
     end
     
-    # 水平拼接所有文件数据（保留原始形状）
+    # Horizontally concatenate the data from all files while preserving the original layout
     input_matrix_Ar_1D_moments = hcat(filtered_inputs_moments...)
     output_matrix_Ar_1D_moments = hcat(filtered_outputs_moments...)
     input_matrix_Ar_1D_source = hcat(filtered_inputs_source...)
@@ -112,10 +112,10 @@ function weighted_smooth_l1_loss(pred, target, weights; delta=1.0f0)
     return sum(weights .* losses) / sum(weights)
 end
 
-# ================== 修改后的训练函数 ================== #
+# ================== Modified training functions ================== #
 function train_mv1v1v1_model(input_data, output_data; epochs=6000, model_file="model_Ar_1D_mv1v1v1.bson")
     input_gpu = gpu(input_data)
-    output_gpu = gpu(output_data[1:1, :])  # 选择第一个输出参数
+    output_gpu = gpu(output_data[1:1, :])  # Select the first output component
 
     model = Chain(
         Dense(9, 128, softplus),
@@ -124,7 +124,7 @@ function train_mv1v1v1_model(input_data, output_data; epochs=6000, model_file="m
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
-        Dense(64, 1)  # 输出维度改为1
+        Dense(64, 1)  # Set the output dimension to 1
     ) |> gpu
 
     opt = Flux.setup(Adam(0.0002f0), model)
@@ -138,7 +138,7 @@ function train_mv1v1v1_model(input_data, output_data; epochs=6000, model_file="m
             X = input_gpu[:, indices]
             Y = output_gpu[:, indices]
             
-            # 计算单参数权重
+            # Compute the weights for the single-output model
             weights = calculate_weights_mv1v1v1(Y) |> gpu
 
             loss, grads = Flux.withgradient(model) do m
@@ -161,7 +161,7 @@ end
 
 function train_mvvv1v1_model(input_data, output_data; epochs=10000, model_file="model_Ar_1D_mvvv1v1.bson")
     input_gpu = gpu(input_data)
-    output_gpu = gpu(output_data[2:2, :])  # 选择第二个输出参数
+    output_gpu = gpu(output_data[2:2, :])  # Select the second output component
 
     model = Chain(
         Dense(9, 128, softplus),
@@ -170,7 +170,7 @@ function train_mvvv1v1_model(input_data, output_data; epochs=10000, model_file="
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
-        Dense(64, 1)  # 输出维度改为1
+        Dense(64, 1)  # Set the output dimension to 1
     ) |> gpu
 
     opt = Flux.setup(Adam(0.0001f0), model)
@@ -206,7 +206,7 @@ end
 
 function train_s4_model(input_data, output_data; epochs=6000, model_file="model_Ar_1D_s4.bson")
     input_gpu = gpu(input_data)
-    output_gpu = gpu(output_data[1:1, :])  # 选择第一个输出参数
+    output_gpu = gpu(output_data[1:1, :])  # Select the first output component
 
     model = Chain(
         Dense(4, 128, softplus),
@@ -215,7 +215,7 @@ function train_s4_model(input_data, output_data; epochs=6000, model_file="model_
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
-        Dense(64, 1)  # 输出维度改为1
+        Dense(64, 1)  # Set the output dimension to 1
     ) |> gpu
 
     opt = Flux.setup(Adam(0.0002f0), model)
@@ -251,7 +251,7 @@ end
 
 function train_s5_model(input_data, output_data; epochs=6000, model_file="model_Ar_1D_s5.bson")
     input_gpu = gpu(input_data)
-    output_gpu = gpu(output_data[2:2, :])  # 选择第二个输出参数
+    output_gpu = gpu(output_data[2:2, :])  # Select the second output component
 
     model = Chain(
         Dense(4, 128, softplus),
@@ -260,7 +260,7 @@ function train_s5_model(input_data, output_data; epochs=6000, model_file="model_
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
         Dense(64, 64, softplus),
-        Dense(64, 1)  # 输出维度改为1
+        Dense(64, 1)  # Set the output dimension to 1
     ) |> gpu
 
     opt = Flux.setup(Adam(0.0002f0), model)
@@ -294,15 +294,15 @@ function train_s5_model(input_data, output_data; epochs=6000, model_file="model_
     println("s5 model saved")
 end
 
-# ================== 主函数 ================== #
+# ================== Main function ================== #
 function main()
     Random.seed!(1234)
     base_path = "/home/songhang/sparta/examples/Hangshock/Ar"
     
-    # 加载数据
+    # Load the data
     input_moments, output_moments, input_source, output_source = load_data(base_path)
 
-    # 训练四个独立模型
+    # Train the four independent models
     train_mv1v1v1_model(input_moments, output_moments)
     train_mvvv1v1_model(input_moments, output_moments)
     train_s4_model(input_source, output_source)

@@ -2,58 +2,58 @@ import pandas as pd
 import glob
 import os
 
-# 定义列名
+# Define column names
 column_names = ['ID', 'X', 'rho', 'v1', 'Ttrans', 'p', 'p1', 'q1', 'mv1v1v1', 'mvvv1v1']
 
 def process_file(file_path):
-    # 获取文件所在的子文件夹名称
+    # Get the name of the subfolder containing the file
     subfolder_name = os.path.basename(os.path.dirname(file_path))
     
-    # 读取文件头以提取 I 的值
+    # Read the file header to extract the value of I
     with open(file_path, 'r') as f:
         lines = f.readlines()
-        # 提取 ITEM: NUMBER OF CELLS 的值
-        i_value = int(lines[3].strip())  # 第 4 行保存了 I 的值
+        # Extract the value of ITEM: NUMBER OF CELLS
+        i_value = int(lines[3].strip())  # The 4th line stores the value of I
 
-    # 跳过前 9 行，读取数据内容
+    # Skip the first 9 lines and read the data section
     data = pd.read_csv(file_path, delim_whitespace=True, names=column_names, skiprows=9)
     
-    # 按 ID 排序
+    # Sort the data by ID
     sorted_data = data.sort_values(by='ID', ascending=True)
     
-    # 构建正激波输出文件名
+    # Construct the output filename for the forward shock data
     fwd_output_file = os.path.join(
         os.path.dirname(file_path),
         f"fwd_{os.path.basename(file_path).replace('tmp_flowvss.', '').split('.')[-1]}.dat"
     )
     
-    # 写入 Tecplot 表头和正激波数据
+    # Write the Tecplot header and forward shock data
     with open(fwd_output_file, 'w') as f:
         f.write("TITLE = \"DSMC\"\n")
         f.write("VARIABLES = \"ID\" \"X\" \"rho\" \"v1\" \"Ttrans\" \"p\" \"p1\" \"q1\" \"mv1v1v1\" \"mvvv1v1\"\n")
-        f.write(f"ZONE T=\"{subfolder_name}\", I={i_value}, J=1, K=1, F=POINT\n")  # 使用子文件夹名称
+        f.write(f"ZONE T=\"{subfolder_name}\", I={i_value}, J=1, K=1, F=POINT\n")  # Use the subfolder name
         sorted_data.to_csv(f, sep=' ', index=False, header=False)
     
     print(f"Forward shock data from '{file_path}' has been sorted and saved to '{fwd_output_file}' with headers.")
 
-    # 创建逆激波数据
+    # Create the inverted shock data
     inverted_data = sorted_data.copy()
-    inverted_data['X'] = -inverted_data['X']  # X 取负
-    inverted_data['v1'] = -inverted_data['v1']  # v1 取负
-    inverted_data['q1'] = -inverted_data['q1']  # q1 取负
-    inverted_data['mv1v1v1'] = -inverted_data['mv1v1v1']  # mv1v1v1 取负
-    # 其他变量保持不变
+    inverted_data['X'] = -inverted_data['X']  # Negate X
+    inverted_data['v1'] = -inverted_data['v1']  # Negate v1
+    inverted_data['q1'] = -inverted_data['q1']  # Negate q1
+    inverted_data['mv1v1v1'] = -inverted_data['mv1v1v1']  # Negate mv1v1v1
+    # Keep the other variables unchanged
 
-    # 按 X 排序，使其从小到大
+    # Sort by X in ascending order
     inverted_data = inverted_data.sort_values(by='X', ascending=True)
 
-    # 构建逆激波输出文件名
+    # Construct the output filename for the inverted shock data
     inv_output_file = os.path.join(
         os.path.dirname(file_path),
         f"inv_{os.path.basename(file_path).replace('tmp_flowvss.', '').split('.')[-1]}.dat"
     )
 
-    # 写入 Tecplot 表头和逆激波数据
+    # Write the Tecplot header and inverted shock data
     with open(inv_output_file, 'w') as f:
         f.write("TITLE = \"DSMC\"\n")
         f.write("VARIABLES = \"ID\" \"X\" \"rho\" \"v1\" \"Ttrans\" \"p\" \"p1\" \"q1\" \"mv1v1v1\" \"mvvv1v1\"\n")
@@ -62,16 +62,17 @@ def process_file(file_path):
     
     print(f"Inverted shock data from '{file_path}' has been saved to '{inv_output_file}'.")
 
-# 使用 glob 递归获取所有子文件夹中的 tmp_flowvhs.* 文件的路径
+# Recursively collect paths of all tmp_flowvss.* files in subfolders
 file_paths = glob.glob('./**/tmp_flowvss.*', recursive=True)
 
-# 检查是否有文件匹配
+# Check whether any files match the pattern
 if file_paths:
     for file_path in file_paths:
-        # 跳过文件名为 tmp_flowvss.0 的文件
+        # Skip files named tmp_flowvss.0
         if file_path.endswith("tmp_flowvss.0"):
             print(f"Skipping file '{file_path}'")
             continue
         process_file(file_path)
 else:
     print("No files found matching pattern './**/tmp_flowvss.*'.")
+

@@ -3,9 +3,9 @@ import math
 import numpy as np
 from math import sqrt
 from scipy.interpolate import CubicSpline
-from scipy.ndimage import gaussian_filter1d  # 添加高斯滤波导入
+from scipy.ndimage import gaussian_filter1d  # Import Gaussian filter
 
-# 初始常量定义
+# Definition of initial constants
 INITIAL_VALUES = {
     "μref": 2.117e-5,
     "Tref": 273.15,
@@ -20,18 +20,18 @@ required_vars = ["x", "Ttrans_N", "p_N",
                  "q1_deriv_N", "mv1v1v1_mod_N", "mvvv1v1_mod_N",
                  "S4_mod_N", "S5_mod_N"]
 
-# 读取数据函数（保持不变）
+# Function for reading data
 def read_data(filename):
     try:
         with open(filename, 'r') as file:
-            lines = file.readlines()[3:]  # 跳过前三行
+            lines = file.readlines()[3:]  # Skip the first three lines
         data = [list(map(float, line.split())) for line in lines]
         return np.array(data)
     except Exception as e:
         print(f"Error reading file {filename}: {e}")
         return None
 
-# 插值函数（三次插值）（保持不变）
+# Function for cubic interpolation and insertion of additional points
 def interpolate_and_insert_points(data, num_new_points=3):
     x = data[:, 0]
     y = data[:, 1:]
@@ -54,7 +54,7 @@ def interpolate_and_insert_points(data, num_new_points=3):
     interpolated_data.append(data[-1])
     return np.array(interpolated_data)
 
-# 计算导数和归一化（添加滤波处理）
+# Calculate derivatives and normalized quantities, with filtering applied
 def calculate_derivatives(data):
     try:
         μref, Tref, dref, Mref, ω = INITIAL_VALUES["μref"], INITIAL_VALUES["Tref"], INITIAL_VALUES["dref"], INITIAL_VALUES["Mref"], INITIAL_VALUES["ω"]
@@ -102,11 +102,11 @@ def calculate_derivatives(data):
         mv1v1v1_mod_N = gaussian_filter1d(mv1v1v1_mod_N, sigma=3)
         mvvv1v1_mod_N = gaussian_filter1d(mvvv1v1_mod_N, sigma=3)
 
-        # 计算原始S4和S5
+        # Calculate the raw S4 and S5 terms
         S4_mod_N = np.gradient(f4, x) / (p/μ * ρ * vref**2)
         S5_mod_N = (np.gradient(f5, x) - 2 * v1 * np.gradient(f4, x)) / (p/μ * ρ * vref**3 * 10.0)
 
-        # 应用高斯滤波（新增部分）
+        # Apply Gaussian filtering
         S4_mod_N = gaussian_filter1d(S4_mod_N, sigma=1)
         S5_mod_N = gaussian_filter1d(S5_mod_N, sigma=1)
 
@@ -120,7 +120,7 @@ def calculate_derivatives(data):
         print(f"Error in derivative calculation: {e}")
         return None
 
-# 保存结果函数（保持不变）
+# Function for saving the results
 def save_results(output_filename, combined_data):
     try:
         with open(output_filename, 'w') as file:
@@ -131,7 +131,7 @@ def save_results(output_filename, combined_data):
     except Exception as e:
         print(f"Error saving file {output_filename}: {e}")
 
-# main函数（保持不变）
+# Main function
 def main():
     for root, _, files in os.walk('.'):
         for filename in files:
@@ -157,3 +157,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
