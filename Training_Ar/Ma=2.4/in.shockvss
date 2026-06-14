@@ -1,0 +1,60 @@
+################################################################################
+# shock in quasi-1D tube with collisions
+# particles reflect off global box boundaries
+#
+# Notes:
+#  - The domain is only 1 cell high in Y
+#  - The "comm/sort” option to the “global” command is used to match MPI runs.
+#  - The “twopass” option is used to match Kokkos runs.
+# The "comm/sort" and "twopass" options should not be used for production runs.
+################################################################################
+
+#  (1 cell high in Y)
+# particles reflect off global box boundaries
+
+seed	    	    12345 
+dimension   	    2     
+global              gridcut -1.0 comm/sort yes
+
+boundary	    os p p
+
+create_box  	    -0.07 0.03 -0.001 0.001 -0.001 0.001 
+create_grid 	    1000 1 1
+ 
+balance_grid        rcb cell 
+
+region		    LP block -0.07 0.0 -0.001 0.001 -0.001 0.001
+region		    HP block  0.0 0.03 -0.001 0.001 -0.001 0.001
+
+species		    Ar.species Ar
+mixture		    gasArLP Ar nrho 1.3324517321071778e21  vstream 738.7641137226805 0 0 temp 273.15
+mixture		    gasArHP Ar nrho 3.5045305830764126e21  vstream 280.8842724049775 0 0 temp 721.7846484374999
+
+global		    fnum 1e9
+
+collide             vss all Ar.vss 
+
+create_particles    gasArLP n 0 region LP twopass # LP - low pressure region
+create_particles    gasArHP n 0 region HP twopass # HP - high pressure region
+
+fix		    in emit/face gasArLP xlo twopass 
+
+surf_collide 1 piston 280.8842724049775
+bound_modify xhi collide 1 
+
+stats		    100 
+stats_style	    step cpu np nattempt ncoll nscoll nscheck
+
+timestep 2e-8
+
+compute             1 property/grid all xc
+compute             2 grid all species massrho u 
+compute             3 thermal/grid all species temp press
+compute             4 pflux/grid all species momxx
+compute             5 eflux/grid all species heatx mvxvxvx mvvvxvx 
+
+fix                 1 ave/grid all 1 10000 10000 c_1[*] c_2[*] c_3[*] c_4[*] c_5[*]
+dump                1 grid all 10000 tmp_flowvss.* id f_1[*] 
+
+run 30000
+
