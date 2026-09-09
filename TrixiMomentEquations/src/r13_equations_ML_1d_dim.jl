@@ -4,10 +4,10 @@ using Statistics
 
 using Trixi: @muladd
 
-# 加载模型
+# Load the neural network models
 base_path = joinpath(dirname(Base.find_package("TrixiMomentEquations")), "Machine_learning_data_Ar_1d")
 
-# 声明全局变量，用于存储加载的模型
+# Declare global variables that store the loaded models
 global model_Ar_1D_mv1v1v1
 @load joinpath(base_path, "model_Ar_1D_mv1v1v1.bson") model_Ar_1D_mv1v1v1
 
@@ -16,21 +16,21 @@ global model_Ar_1D_mvvv1v1
 
 @muladd begin
 
-# 定义 R13 方程的结构体
+# Define the R13 equations with machine-learned parabolic terms
 struct R13EquationsML1DDIM{E <: G13EquationsML1DDIM, GradientVariables} <: Trixi.AbstractEquationsParabolic{1, 5, GradientVariables}
     equations_hyperbolic::E    
     gradient_variables::GradientVariables 
 end
 
-# 构造函数
+# Constructor
 function R13EquationsML1DDIM(equations::G13EquationsML1DDIM; gradient_variables = GradientVariablesPrimitive())
     R13EquationsML1DDIM{typeof(equations), typeof(gradient_variables)}(equations, gradient_variables)
 end
 
-# 变量名称映射
+# Delegate variable names to the hyperbolic equations
 varnames(var_map, eqs::R13EquationsML1DDIM) = varnames(var_map, eqs.equations_hyperbolic)
 
-# 梯度变量的转换
+# Transform conservative variables before computing gradients
 function Trixi.gradient_variable_transformation(::R13EquationsML1DDIM)
     cons2prim
 end
@@ -48,7 +48,7 @@ end
 @inline _gradient_1d(gradients::Tuple) = only(gradients)
 @inline _gradient_1d(gradients) = gradients
 
-# 对抛物方程变量进行归一化
+# Normalize state variables and gradients for parabolic model inference
 @inline function normalize_parabolic(u, gradients, orientation::Integer, equations::R13EquationsML1DDIM)
     ρ, v1, p, p1, q1 = convert_transformed_to_primitive(u, equations)
     gradients_1d = _gradient_1d(gradients)
@@ -76,7 +76,7 @@ end
     return SVector(T_N, p_N, σ1_N, q1_N, dρdx_N, dTdx_N, dpdx_N, dσdx_N, dq1dx_N)
 end
 
-# 高阶矩预测函数
+# Predict normalized high-order moments
 @inline function predict_high_order_moments(all, equations::R13EquationsML1DDIM)
 
     T_N, p_N, σ1_N, q1_N, dρdx_N, dTdx_N, dpdx_N, dσdx_N, dq1dx_N = all
@@ -204,7 +204,7 @@ function Trixi.calc_viscous_fluxes!(flux_viscous, gradients, u_transformed,
     return nothing
 end
 
-# 边界条件实现
+# Outflow boundary conditions
 @inline function BoundaryConditionOutflowParabolic(flux_inner, u_inner, orientation::Integer, direction, x, t,
     operator_type::Trixi.Gradient, equations_parabolic::R13EquationsML1DDIM)
     return flux_inner
@@ -215,7 +215,7 @@ end
     return flux_inner
 end
 
-# 常值 Dirichlet 边界条件
+# Constant Dirichlet boundary conditions
 @inline function (boundary_condition::BoundaryConditionConstantDirichlet)(flux_inner, u_inner, orientation::Integer,
     direction, x, t, operator_type::Trixi.Gradient, equations_parabolic::R13EquationsML1DDIM)
     value = boundary_condition.boundary_value
@@ -230,7 +230,7 @@ end
     return bc
 end
 
-# 变量转换实现
+# Convert conservative variables to primitive variables
 @inline function Trixi.cons2prim(u, equations::R13EquationsML1DDIM)
     ρ, ρv1, ρvv_3p, ρv1v1_p1, ρvvv1_3pv1_2p1v1_2q1 = u
     v1 = ρv1 / ρ
@@ -242,7 +242,7 @@ end
     return SVector(ρ, v1, p, p1, q1)
 end
 
-# 额外的辅助函数
+# Delegate thermodynamic helper functions to the hyperbolic equations
 @inline Trixi.temperature(u, equations::R13EquationsML1DDIM) = Trixi.temperature(u, equations.equations_hyperbolic)
 @inline Trixi.density(u, equations::R13EquationsML1DDIM) = Trixi.density(u, equations.equations_hyperbolic)
 @inline Trixi.pressure(u, equations::R13EquationsML1DDIM) = Trixi.pressure(u, equations.equations_hyperbolic)
